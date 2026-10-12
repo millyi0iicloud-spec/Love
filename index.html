@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Для тебя ❤</title>
+<style>
+  :root {
+    --bg: #fff1f3; --card: #ffffff; --text: #3a1f27; --hint: #9a6b78; --line: #f6d3dc;
+    --accent: #e11d48; --accent-t: #fff;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1a0d13; --card: #26141c; --text: #ffe9ee; --hint: #c996a6; --line: #432633;
+      --accent: #ff5c84; --accent-t: #2a0b15;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1a0d13; --card: #26141c; --text: #ffe9ee; --hint: #c996a6; --line: #432633;
+    --accent: #ff5c84; --accent-t: #2a0b15;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; min-height: 100vh; background: var(--bg); color: var(--text);
+    font: 17px/1.45 -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
+    overflow-x: hidden;
+  }
+  .warn {
+    background: var(--accent); color: var(--accent-t); text-align: center; font-weight: 700;
+    padding: 12px 16px; letter-spacing: .2px;
+  }
+  main { max-width: 440px; margin: 0 auto; padding: 20px 16px 32px; position: relative; z-index: 1; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 22px 18px;
+    box-shadow: 0 12px 30px rgba(225, 29, 72, .10);
+    animation: in .35s ease-out;
+  }
+  @keyframes in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .shake { animation: shake .4s; }
+  @keyframes shake { 20%,60% { transform: translateX(-8px); } 40%,80% { transform: translateX(8px); } }
+  h1, h2 { font-family: ui-serif, Georgia, "Times New Roman", serif; font-weight: 700; line-height: 1.2; margin: 6px 0 12px; }
+  h1 { font-size: 28px; } h2 { font-size: 26px; text-align: center; }
+  p { margin: 0 0 14px; }
+  .meta { color: var(--hint); font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
+  .dots { display: flex; gap: 6px; }
+  .dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--line); }
+  .dots i.on { background: var(--accent); }
+  .opts { display: grid; gap: 10px; margin-top: 16px; }
+  button.opt, button.main {
+    font: inherit; border-radius: 14px; padding: 14px 16px; cursor: pointer; width: 100%;
+    border: 1.5px solid var(--line); background: var(--card); color: var(--text);
+    transition: transform .15s ease, background .15s;
+  }
+  button.opt:hover { background: var(--bg); }
+  button.opt:active, button.main:active { transform: scale(.97); }
+  button.main { background: var(--accent); color: var(--accent-t); border-color: var(--accent); font-weight: 700; }
+  input.num {
+    width: 100%; font: inherit; font-size: 22px; text-align: center; padding: 14px; margin-top: 16px;
+    border: 1.5px solid var(--line); border-radius: 14px; background: var(--bg); color: var(--text);
+  }
+  .err { color: var(--accent); font-weight: 600; min-height: 1.5em; margin: 12px 0 0; }
+  .hint { color: var(--hint); font-size: 15px; margin: 4px 0 0; }
+  button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .link { background: none; border: 0; color: var(--hint); font: inherit; font-size: 14px; text-decoration: underline; cursor: pointer; display: block; margin: 18px auto 0; }
+
+  canvas#heart { width: 100%; height: 340px; display: block; }
+  .days { text-align: center; color: var(--hint); }
+  .days b { color: var(--accent); font-size: 22px; }
+  .fl {
+    position: fixed; bottom: -40px; pointer-events: none; z-index: 0; opacity: 0;
+    animation: fly linear forwards;
+  }
+  @keyframes fly {
+    0% { opacity: 0; transform: translateY(0) translateX(0); }
+    10% { opacity: .8; }
+    100% { opacity: 0; transform: translateY(-110vh) translateX(30px); }
+  }
+  @media (prefers-reduced-motion: reduce) { .card, .shake { animation: none; } .fl { display: none; } }
+</style>
+</head>
+<body>
+<div class="warn">⚠️ Внимание: ошибки не принимаются!</div>
+<main id="app"></main>
+
+<script>
+  // ===== Настройки: поменяй под себя =====
+  var CONFIG = {
+    name: "любимая",                 // как к ней обращаться
+    start: "2024-03-15",             // дата начала отношений (ГГГГ-ММ-ДД)
+    finale: "Ты лучшее, что со мной случилось. Я люблю тебя ❤"
+  };
+
+  var QUESTIONS = [
+    { q: "Ты меня любишь?", choices: ["Да", "Очень сильно", "Нет"], ok: [0, 1], dodge: [2] },
+    { q: "Сколько дней мы вместе?", days: true },
+    { q: "Кто самая красивая девушка на свете?", choices: ["Я", "Конечно я", "Не я"], ok: [0, 1] },
+    { q: "Пойдёшь со мной на свидание на выходных?", choices: ["Да", "Конечно да", "Подумаю"], ok: [0, 1], dodge: [2] }
+  ];
+  var ERRORS = ["Ошибки не принимаются 😤 Попробуй ещё раз", "Нет-нет-нет, так не пойдёт ❌", "Ну подумай получше 😏"];
+
+  var app = document.getElementById("app");
+  var stopHearts = null, floatTimer = null;
+
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined) n.textContent = text;
+    return n;
+  }
+  function clear() {
+    if (stopHearts) { stopHearts(); stopHearts = null; }
+    if (floatTimer) { clearInterval(floatTimer); floatTimer = null; }
+    app.replaceChildren();
+  }
+
+  // Сколько дней вместе (считаем по календарным датам, без влияния часовых поясов)
+  function daysTogether() {
+    var p = CONFIG.start.split("-").map(Number), n = new Date();
+    return Math.round((Date.UTC(n.getFullYear(), n.getMonth(), n.getDate()) - Date.UTC(p[0], p[1] - 1, p[2])) / 86400000);
+  }
+  function startText() {
+    var p = CONFIG.start.split("-").map(Number);
+    return new Date(p[0], p[1] - 1, p[2]).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+  }
+
+  // ===== Экран приветствия =====
+  function intro() {
+    clear();
+    var card = el("div", "card");
+    card.append(el("h1", "", "Привет, " + CONFIG.name + " ❤"));
+    card.append(el("p", "", "Тебя ждёт маленький тест из " + QUESTIONS.length + " вопросов. Предупреждаю заранее: ошибки не принимаются."));
+    var b = el("button", "main", "Начать");
+    b.onclick = function () { question(0); };
+    card.append(b);
+    app.append(card);
+  }
+
+  // ===== Вопросы =====
+  function question(i) {
+    clear();
+    var qd = QUESTIONS[i], tries = 0;
+    var card = el("div", "card");
+
+    var meta = el("div", "meta");
+    meta.append(el("span", "", "Вопрос " + (i + 1) + " из " + QUESTIONS.length));
+    var dots = el("div", "dots");
+    QUESTIONS.forEach(function (_, k) { dots.append(el("i", k <= i ? "on" : "")); });
+    meta.append(dots);
+    card.append(meta, el("h1", "", qd.q));
+
+    var err = el("p", "err");
+    err.setAttribute("role", "alert");
+    var hint = el("p", "hint");
+
+    function fail() {
+      err.textContent = ERRORS[tries % ERRORS.length];
+      tries++;
+      if (qd.days && tries >= 2) hint.textContent = "Подсказка: мы вместе с " + startText() + " 😉";
+      card.classList.remove("shake"); void card.offsetWidth; card.classList.add("shake");
+      try { if (navigator.vibrate) navigator.vibrate(60); } catch (e) {}
+    }
+    function pass() {
+      err.textContent = "";
+      var ok = el("p", "err", "Верно! ❤");
+      card.append(ok);
+      setTimeout(function () { i + 1 < QUESTIONS.length ? question(i + 1) : finale(); }, 600);
+    }
+
+    if (qd.days) {
+      var inp = el("input", "num");
+      inp.type = "text"; inp.inputMode = "numeric"; inp.placeholder = "Введи число дней";
+      inp.setAttribute("aria-label", "Количество дней");
+      var go = el("button", "main", "Ответить");
+      go.style.marginTop = "12px";
+      var submit = function () { Number(inp.value.trim()) === daysTogether() && inp.value.trim() !== "" ? pass() : fail(); };
+      go.onclick = submit;
+      inp.addEventListener("keydown", function (e) { if (e.key === "Enter") submit(); });
+      card.append(inp, go);
+      setTimeout(function () { inp.focus(); }, 50);
+    } else {
+      var opts = el("div", "opts");
+      qd.choices.forEach(function (label, k) {
+        var b = el("button", "opt", label);
+        // «Неправильные» кнопки убегают от пальца, как в классике
+        if (qd.dodge && qd.dodge.indexOf(k) >= 0) {
+          b.addEventListener("pointerenter", function () {
+            var x = (Math.random() * 2 - 1) * 28, y = (Math.random() * 2 - 1) * 70;
+            b.style.transform = "translate(" + x + "px," + y + "px)";
+          });
+        }
+        b.onclick = function () { qd.ok.indexOf(k) >= 0 ? pass() : fail(); };
+        opts.append(b);
+      });
+      card.append(opts);
+    }
+    card.append(err, hint);
+    app.append(card);
+  }
+
+  // ===== Финал: большое сердце из множества сердечек =====
+  function finale() {
+    clear();
+    var card = el("div", "card");
+    var canvas = el("canvas");
+    canvas.id = "heart";
+    canvas.setAttribute("role", "img");
+    canvas.setAttribute("aria-label", "Большое сердце из маленьких сердечек");
+    card.append(canvas, el("h2", "", "Всё верно, " + CONFIG.name + " ❤"));
+    card.append(el("p", "", CONFIG.finale));
+    var d = el("p", "days");
+    d.append("Мы вместе уже ", el("b", "", String(daysTogether())), " дн.");
+    card.append(d);
+    var again = el("button", "link", "Пройти ещё раз");
+    again.onclick = intro;
+    card.append(again);
+    app.append(card);
+    stopHearts = startHeart(canvas);
+    floatTimer = setInterval(floatHeart, 700);
+  }
+
+  var PALETTE = ["#ff2d55", "#ff6b8b", "#ff9eb5", "#e11d48", "#ff7aa2", "#ffc2d1"];
+
+  function floatHeart() {
+    var h = el("span", "fl", "♥");
+    h.style.left = Math.random() * 100 + "vw";
+    h.style.fontSize = 14 + Math.random() * 22 + "px";
+    h.style.color = PALETTE[(Math.random() * PALETTE.length) | 0];
+    h.style.animationDuration = 6 + Math.random() * 5 + "s";
+    h.addEventListener("animationend", function () { h.remove(); });
+    document.body.appendChild(h);
+  }
+
+  function startHeart(canvas) {
+    var ctx = canvas.getContext("2d"), dpr = Math.min(window.devicePixelRatio || 1, 2), W = 0, H = 0, raf = 0;
+    var calm = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    function size() {
+      var r = canvas.getBoundingClientRect(); W = r.width; H = r.height;
+      canvas.width = W * dpr; canvas.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    size();
+    window.addEventListener("resize", size);
+
+    // Точки внутри и по контуру параметрического сердца
+    var pts = [], N = 340, EDGE = 120;
+    for (var i = 0; i < N; i++) {
+      var edge = i < EDGE;
+      var t = edge ? (i / EDGE) * Math.PI * 2 : Math.random() * Math.PI * 2;
+      var r = edge ? 1 : Math.sqrt(Math.random()) * 0.92;
+      var hx = 16 * Math.pow(Math.sin(t), 3);
+      var hy = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+      pts.push({
+        x: r * hx, y: -r * hy - 2.5, edge: edge,
+        size: edge ? 13 : 6 + Math.random() * 8,
+        ph: Math.random() * 6.28, sp: 0.6 + Math.random() * 1.3, amp: 0.3 + Math.random() * 0.8,
+        c: PALETTE[(Math.random() * PALETTE.length) | 0]
+      });
+    }
+
+    function frame(ts) {
+      var t = ts / 1000, k = calm ? 0.2 : 1;
+      ctx.clearRect(0, 0, W, H);
+      var u = Math.min(W / 36, H / 34);                             // пикселей на единицу сердца
+      var beat = 1 + k * 0.05 * Math.pow(Math.sin(t * 3), 2);       // биение
+      var cx = W / 2 + Math.sin(t * 0.8) * W * 0.03 * k;           // лёгкое покачивание
+      var cy = H / 2 + Math.sin(t * 1.1) * 6 * k;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      for (var j = 0; j < pts.length; j++) {
+        var p = pts[j];
+        var px = cx + (p.x * beat + Math.cos(t * p.sp + p.ph) * p.amp * k) * u;
+        var py = cy + (p.y * beat + Math.sin(t * p.sp * 1.2 + p.ph) * p.amp * k) * u;
+        ctx.globalAlpha = p.edge ? 1 : 0.7 + 0.3 * Math.sin(t * 2 + p.ph);
+        ctx.fillStyle = p.c;
+        ctx.font = p.size * (u / 9) * (1 + 0.15 * Math.sin(t * 3 + p.ph) * k) + "px serif";
+        ctx.fillText("♥", px, py);
+      }
+      ctx.globalAlpha = 1;
+      raf = requestAnimationFrame(frame);
+    }
+    raf = requestAnimationFrame(frame);
+    return function () { cancelAnimationFrame(raf); window.removeEventListener("resize", size); };
+  }
+
+  intro();
+</script>
+</body>
+</html>
